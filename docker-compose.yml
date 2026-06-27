@@ -27,6 +27,15 @@ services:
     volumes:
       - ./loki-config.yaml:/etc/loki/config.yaml:ro
       - loki-data:/tmp/loki
+    # Add an init container to fix volume permissions:
+    init: true
+    user: "root"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        chown -R 10001:10001 /tmp/loki
+        exec su-exec loki /usr/bin/loki -config.file=/etc/loki/config.yaml
     restart: unless-stopped
 
   # ── Tempo — trace storage ─────────────────────────────────────────────────────
