@@ -1,0 +1,27 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: "0.0.0.0:4418"   # OTLP HTTP — note: 4418 not 4318
+        grpc:
+          endpoint: "0.0.0.0:4417"   # OTLP gRPC
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+compactor:
+  compaction:
+    block_retention: 48h
+
+query_frontend:
+  search:
+    max_duration: 0

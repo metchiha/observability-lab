@@ -1,0 +1,58 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"   # App sends here
+      grpc:
+        endpoint: "0.0.0.0:4317"
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  resource:
+    attributes:
+      - action: insert
+        key: loki.resource.labels
+        value: service.name
+
+exporters:
+  # Traces → Tempo
+  otlphttp/tempo:
+    endpoint: http://tempo:4418
+    tls:
+      insecure: true
+
+  # Logs → Loki
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    default_labels_enabled:
+      exporter: false
+      job: true
+    tls:
+      insecure: true
+
+  # Collector's own metrics exposed for Prometheus to scrape
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [batch]
+      exporters:  [otlphttp/tempo, debug]
+
+    logs:
+      receivers:  [otlp]
+      processors: [batch, resource]
+      exporters:  [loki, debug]
+
+    metrics:
+      receivers:  [otlp]
+      processors: [batch]
+      exporters:  [prometheus]

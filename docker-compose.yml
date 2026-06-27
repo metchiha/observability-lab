@@ -1,0 +1,97 @@
+services:
+
+  # ── Grafana — the UI for everything ──────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=devopslab
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+    restart: unless-stopped
+
+  # ── Loki — log storage ────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.3.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/tmp/loki
+    restart: unless-stopped
+
+  # ── Tempo — trace storage ─────────────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:2.6.0
+    ports:
+      - "3200:3200"   # Tempo query API
+      - "4418:4418"   # OTLP HTTP ingest (internal, from otel-collector)
+      - "4417:4417"   # OTLP gRPC ingest (internal, from otel-collector)
+    command: -config.file=/etc/tempo.yaml
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    restart: unless-stopped
+
+  # ── Prometheus — metrics storage ──────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-remote-write-receiver"
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  # ── OTel Collector — telemetry hub ────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.113.0
+    ports:
+      - "4317:4317"   # OTLP gRPC — app sends traces/logs here
+      - "4318:4318"   # OTLP HTTP — app sends traces/logs here
+      - "8889:8889"   # Prometheus scrape target (collector's own metrics)
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  # ── Grafana Alloy — container log collector ───────────────────────────────────
+  alloy:
+    image: grafana/alloy:v1.5.0
+    ports:
+      - "12345:12345"   # Alloy UI (for debugging the pipeline)
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock   # Read Docker container logs
+      - alloy-data:/var/lib/alloy
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  loki-data:
+  tempo-data:
+  prometheus-data:
+  alloy-data:
