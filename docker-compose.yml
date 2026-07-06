@@ -4,7 +4,7 @@ services:
   grafana:
     image: grafana/grafana:11.3.0
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=devopslab
@@ -26,7 +26,7 @@ services:
     command: -config.file=/etc/loki/config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/config.yaml:ro
-      - loki-data:/tmp/loki
+      - loki-data:/var/loki
     restart: unless-stopped
 
   # ── Tempo — trace storage ─────────────────────────────────────────────────────
