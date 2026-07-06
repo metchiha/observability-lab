@@ -95,3 +95,7 @@ volumes:
   tempo-data:
   prometheus-data:
   alloy-data:
+
+networks:
+  default:
+    name: observability-lab_default

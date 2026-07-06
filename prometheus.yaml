@@ -6,7 +6,8 @@ scrape_configs:
   # Scrape the FastAPI /metrics endpoint
   - job_name: "devops-lab-api"
     static_configs:
-      - targets: ["app:8000"]   # "app" is the service name in docker-compose
+      - targets: ["app:8000"]   # local dev — "app" is the service name in docker-compose
+      - targets: ["5.161.250.79:8001"]   # production deployment
     metrics_path: "/metrics"
 
   # Scrape the OTel Collector's own metrics
